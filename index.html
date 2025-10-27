@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#e63946">
-  <!-- 修复：使用正确的图标链接格式（ImgBB需用完整图片链接） -->
+  <!-- 自定义图标（已验证可用） -->
   <link rel="apple-touch-icon" href="https://i.ibb.co/rGbQV6P/46f45c03a87a6203248f509d9a23c8c3.jpg">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="https://i.ibb.co/rGbQV6P/46f45c03a87a6203248f509d9a23c8c3.jpg">
@@ -12,11 +12,11 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
   
-  <!-- 引入最新版Firebase（确保可用） -->
+  <!-- 引入Firebase（稳定版本） -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"></script>
   
-  <!-- Tailwind 配置：补充active类样式，修复导航按钮状态 -->
+  <!-- Tailwind 配置 -->
   <script>
     tailwind.config = {
       theme: {
@@ -39,7 +39,6 @@
       .card-shadow { box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
       .hover-scale { transition: transform 0.3s ease; }
       .hover-scale:hover { transform: scale(1.03); }
-      /* 修复：添加active类样式，确保导航按钮选中状态显示 */
       .active { background-color: rgba(230, 57, 70, 0.8); }
     }
   </style>
@@ -55,7 +54,6 @@
       </div>
       
       <div class="hidden md:flex items-center space-x-6">
-        <!-- 修复：添加active类，确保初始选中菜品列表 -->
         <button id="menu-btn" class="flex items-center space-x-1 active px-3 py-1 rounded">
           <i class="fa fa-list"></i>
           <span>菜品列表</span>
@@ -80,7 +78,6 @@
     <!-- 移动端导航菜单 -->
     <div id="mobile-menu" class="md:hidden hidden bg-primary/95">
       <div class="container mx-auto px-4 py-2 flex flex-col space-y-3">
-        <!-- 修复：添加active类和样式 -->
         <button id="mobile-menu-btn-item" class="py-2 flex items-center space-x-3 active px-3 rounded">
           <i class="fa fa-list w-6"></i>
           <span>菜品列表</span>
@@ -116,7 +113,6 @@
         </div>
         
         <div class="flex flex-wrap gap-2">
-          <!-- 修复：分类按钮初始状态 -->
           <button class="category-btn active px-4 py-2 rounded-full text-sm bg-primary text-white" data-category="all">全部</button>
           <button class="category-btn px-4 py-2 rounded-full text-sm bg-gray-200 hover:bg-gray-300 transition-colors" data-category="热菜">热菜</button>
           <button class="category-btn px-4 py-2 rounded-full text-sm bg-gray-200 hover:bg-gray-300 transition-colors" data-category="凉菜">凉菜</button>
@@ -244,7 +240,7 @@
 
   <!-- 下单成功弹窗 -->
   <div id="order-success-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl p-8 max-w-md w-full mx-4 transform transition-all scale-95 opacity-0" id="modal-content">
+    <div class="bg-white rounded-xl p-8 max-w-md w-full mx-auto transform transition-all scale-95 opacity-0" id="modal-content">
       <div class="text-center">
         <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <i class="fa fa-check text-2xl text-green-500"></i>
@@ -264,13 +260,9 @@
     </div>
   </footer>
 
-  <!-- 修复：添加manifest.json内联配置（无需额外文件） -->
+  <!-- 注册服务工作线程（支持PWA） -->
   <script>
-    // 生成manifest.json内容，解决PWA配置缺失问题
-    if ('applicationCache' in window) {
-      const manifestContent = {
-        "name": "吴佳怡的menu",
-        "short_name": "佳怡menu",
-        "description": "吴佳怡的个性化点菜系统",
-        "start_url": ".",
-        "display": "stand
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then((registration
