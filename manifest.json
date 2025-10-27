@@ -1,0 +1,21 @@
+{
+  "name": "吴佳怡的menu",
+  "short_name": "佳怡menu",
+  "description": "吴佳怡的个性化点菜系统",
+  "start_url": ".",
+  "display": "standalone", // 全屏显示，无浏览器地址栏
+  "background_color": "#f1faee",
+  "theme_color": "#e63946",
+  "icons": [
+    {
+      "src": "https://picsum.photos/seed/menuicon/192/192",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://picsum.photos/seed/menuicon/512/512",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

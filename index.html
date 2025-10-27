@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#e63946"> <!-- 主题色，与主色调一致 -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="https://picsum.photos/seed/menuicon/128/128"> <!-- App图标 -->
+  <link rel="manifest" href="manifest.json"> <!-- PWA配置文件 -->
+  <link rel="icon" href="https://picsum.photos/seed/menuicon/64/64">
+  <title>吴佳怡的menu</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  
+  <!-- Tailwind 配置 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#e63946',
+            secondary: '#ffb703',
+            neutral: '#f1faee',
+            dark: '#1d3557',
+            light: '#a8dadc'
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .card-shadow {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      }
+      .hover-scale {
+        transition: transform 0.3s ease;
+      }
+      .hover-scale:hover {
+        transform: scale(1.03);
+      }
+      .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+      }
+    }
+  </style>
+</head>
+
+<body class="bg-neutral min-h-screen font-sans text-dark">
+  <!-- 导航栏 -->
+  <header class="bg-primary text-white shadow-md sticky top-0 z-50 transition-all duration-300">
+    <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+      <div class="flex items-center space-x-2">
+        <i class="fa fa-cutlery text-2xl"></i>
+        <h1 class="text-xl md:text-2xl font-bold">吴佳怡的menu</h1>
+      </div>
+      
+      <div class="hidden md:flex items-center space-x-6">
+        <button id="menu-btn" class="nav-btn active flex items-center space-x-1">
+          <i class="fa fa-list"></i>
+          <span>菜品列表</span>
+        </button>
+        <button id="add-dish-btn" class="nav-btn flex items-center space-x-1">
+          <i class="fa fa-plus-circle"></i>
+          <span>添加菜品</span>
+        </button>
+        <button id="order-btn" class="nav-btn flex items-center space-x-1 relative">
+          <i class="fa fa-shopping-cart"></i>
+          <span>我的订单</span>
+          <span id="cart-count" class="absolute -top-2 -right-2 bg-secondary text-dark text-xs rounded-full w-5 h-5 flex items-center justify-center">0</span>
+        </button>
+      </div>
+      
+      <!-- 移动端菜单按钮 -->
+      <button id="mobile-menu-btn" class="md:hidden text-white text-xl">
+        <i class="fa fa-bars"></i>
+      </button>
+    </div>
+    
+    <!-- 移动端导航菜单 -->
+    <div id="mobile-menu" class="md:hidden hidden bg-primary/95 backdrop-blur-sm">
+      <div class="container mx-auto px-4 py-2 flex flex-col space-y-3">
+        <button id="mobile-menu-btn-item" class="mobile-nav-btn active py-2 flex items-center space-x-3">
+          <i class="fa fa-list w-6"></i>
+          <span>菜品列表</span>
+        </button>
+        <button id="mobile-add-dish-btn" class="mobile-nav-btn py-2 flex items-center space-x-3">
+          <i class="fa fa-plus-circle w-6"></i>
+          <span>添加菜品</span>
+        </button>
+        <button id="mobile-order-btn" class="mobile-nav-btn py-2 flex items-center space-x-3 relative">
+          <i class="fa fa-shopping-cart w-6"></i>
+          <span>我的订单</span>
+          <span id="mobile-cart-count" class="absolute right-4 top-1/2 -translate-y-1/2 bg-secondary text-dark text-xs rounded-full w-5 h-5 flex items-center justify-center">0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container mx-auto px-4 py-6">
+    <!-- 菜品列表区域 -->
+    <section id="menu-section" class="space-y-6">
+      <!-- 搜索和分类 -->
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div class="relative w-full md:w-64">
+          <input type="text" id="search-input" placeholder="搜索菜品..." 
+                 class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50">
+          <i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+        </div>
+        
+        <div class="flex flex-wrap gap-2">
+          <button class="category-btn active px-4 py-2 rounded-full text-sm bg-primary text-white" data-category="all">全部</button>
+          <button class="category-btn px-4 py-2 rounded-full text-sm bg-gray-200 hover:bg-gray-300 transition-colors" data-category="热菜">热菜</button>
+          <button class="category-btn px-4 py-2 rounded-full text-sm bg-gray-200 hover:bg-gray-300 transition-colors" data-category="凉菜">凉菜</button>
+          <button class="category-btn px-4 py-2 rounded-full text-sm bg-gray-200 hover:bg-gray-300 transition-colors" data-category="汤品">汤品</button>
+          <button class="category-btn px-4 py-2 rounded-full text-sm bg-gray-200 hover:bg-gray-300 transition-colors" data-category="主食">主食</button>
+          <button class="category-btn px-4 py-2 rounded-full text-sm bg-gray-200 hover:bg-gray-300 transition-colors" data-category="饮品">饮品</button>
+        </div>
+      </div>
+      
+      <!-- 菜品列表 -->
+      <div id="dishes-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <!-- 菜品将通过JS动态生成 -->
+      </div>
+      
+      <!-- 空状态提示 -->
+      <div id="empty-menu" class="hidden py-16 text-center">
+        <i class="fa fa-utensils text-5xl text-gray-300 mb-4"></i>
+        <p class="text-gray-500">暂无菜品，请添加菜品</p>
+      </div>
+    </section>
+    
+    <!-- 添加菜品区域 -->
+    <section id="add-dish-section" class="hidden max-w-2xl mx-auto">
+      <div class="bg-white rounded-xl shadow-lg p-6 md:p-8">
+        <h2 class="text-2xl font-bold mb-6 flex items-center">
+          <i class="fa fa-plus-circle text-primary mr-2"></i>添加新菜品
+        </h2>
+        
+        <form id="add-dish-form" class="space-y-5">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label for="dish-name" class="block text-sm font-medium text-gray-700 mb-1">菜品名称 *</label>
+              <input type="text" id="dish-name" required 
+                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
+            </div>
+            
+            <div>
+              <label for="dish-price" class="block text-sm font-medium text-gray-700 mb-1">价格 (元) *</label>
+              <input type="number" id="dish-price" min="0" step="0.01" required 
+                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
+            </div>
+          </div>
+          
+          <div>
+            <label for="dish-category" class="block text-sm font-medium text-gray-700 mb-1">分类 *</label>
+            <select id="dish-category" required 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
+              <option value="">请选择分类</option>
+              <option value="热菜">热菜</option>
+              <option value="凉菜">凉菜</option>
+              <option value="汤品">汤品</option>
+              <option value="主食">主食</option>
+              <option value="饮品">饮品</option>
+            </select>
+          </div>
+          
+          <div>
+            <label for="dish-description" class="block text-sm font-medium text-gray-700 mb-1">菜品描述</label>
+            <textarea id="dish-description" rows="3" 
+                      class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"></textarea>
+          </div>
+          
+          <div>
+            <label for="dish-image" class="block text-sm font-medium text-gray-700 mb-1">菜品图片</label>
+            <input type="file" id="dish-image" accept="image/*" 
+                   class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-primary/10 file:text-primary hover:file:bg-primary/20">
+          </div>
+          
+          <div class="pt-2 flex justify-end">
+            <button type="button" id="cancel-add-dish" class="px-5 py-2 mr-3 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors">取消</button>
+            <button type="submit" class="px-5 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center">
+              <i class="fa fa-save mr-2"></i>保存菜品
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+    
+    <!-- 订单区域 -->
+    <section id="order-section" class="hidden max-w-4xl mx-auto">
+      <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div class="p-6 border-b border-gray-100">
+          <h2 class="text-2xl font-bold flex items-center">
+            <i class="fa fa-shopping-cart text-primary mr-2"></i>我的订单
+          </h2>
+        </div>
+        
+        <!-- 订单为空状态 -->
+        <div id="empty-order" class="py-20 text-center">
+          <i class="fa fa-shopping-basket text-5xl text-gray-300 mb-4"></i>
+          <p class="text-gray-500">您的订单是空的</p>
+          <button id="go-to-menu-from-order" class="mt-4 px-5 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+            去点菜
+          </button>
+        </div>
+        
+        <!-- 订单列表 -->
+        <div id="order-items-container" class="max-h-[500px] overflow-y-auto scrollbar-hide">
+          <!-- 订单项目将通过JS动态生成 -->
+        </div>
+        
+        <!-- 订单底部 -->
+        <div id="order-footer" class="p-6 border-t border-gray-100 hidden">
+          <div class="flex justify-between mb-4">
+            <span class="text-gray-600">小计</span>
+            <span id="subtotal" class="font-medium">¥0.00</span>
+          </div>
+          <div class="flex justify-between mb-6">
+            <span class="text-gray-600">总计</span>
+            <span id="total" class="font-bold text-xl text-primary">¥0.00</span>
+          </div>
+          
+          <div class="flex flex-col sm:flex-row gap-3">
+            <button id="clear-order" class="flex-1 px-5 py-3 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors flex items-center justify-center">
+              <i class="fa fa-trash mr-2"></i>清空订单
+            </button>
+            <button id="confirm-order" class="flex-1 px-5 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center">
+              <i class="fa fa-check mr-2"></i>确认下单
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 下单成功弹窗 -->
+  <div id="order-success-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-8 max-w-md w-full mx-4 transform transition-all scale-95 opacity-0" id="modal-content">
+      <div class="text-center">
+        <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <i class="fa fa-check text-2xl text-green-500"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2">下单成功！</h3>
+        <p class="text-gray-600 mb-6">您的订单已提交，服务员将尽快为您上菜</p>
+        <button id="close-modal" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors w-full">
+          确定
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="bg-dark text-white py-6 mt-12">
+    <div class="container mx-auto px-4 text-center">
+      <p>© 吴佳怡点菜系统 - 让点餐更简单</p>
+    </div>
+  </footer>
+
+  <!-- PWA服务工作线程注册 -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').then(registration => {
+          console.log('ServiceWorker注册成功:', registration.scope);
+        }).catch(err => {
+          console.log('ServiceWorker注册失败:', err);
+        });
+      });
+    }
+  </script>
+
+  <script>
+    // 数据持久化工具
+    const storage = {
+      save: (key, data) => { localStorage.setItem(key, JSON.stringify(data)); },
+      get: (key) => { const data = localStorage.getItem(key); return data ? JSON.parse(data) : null; },
+      clear: (key) => { localStorage.removeItem(key); }
+    };
+
+    // 数据模型
+    const defaultDishes = [
+      { id: 1, name: '宫保鸡丁', price: 38.00, category: '热菜', description: '传统川菜，鸡肉鲜嫩，花生酥脆', image: 'https://picsum.photos/seed/dish1/300/200' },
+      { id: 2, name: '麻婆豆腐', price: 28.00, category: '热菜', description: '麻辣鲜香，豆腐嫩滑', image: 'https://picsum.photos/seed/dish2/300/200' },
+      { id: 3, name: '凉拌黄瓜', price: 12.00, category: '凉菜', description: '清爽可口，解腻开胃', image: 'https://picsum.photos/seed/dish3/300/200' },
+      { id: 4, name: '西红柿鸡蛋汤', price: 16.00, category: '汤品', description: '家常汤品，营养丰富', image: 'https://picsum.photos/seed/dish4/300/200' },
+      { id: 5, name: '米饭', price: 3.00, category: '主食', description: '香喷喷的白米饭', image: 'https://picsum.photos/seed/dish5/300/200' },
+      { id: 6, name: '可乐', price: 8.00, category: '饮品', description: '冰镇可乐，畅爽一夏', image: 'https://picsum.photos/seed/dish6/300/200' }
+    ];
+
+    const appState = {
+      dishes: storage.get('menuDishes') || defaultDishes,
+      cart: [],
+      currentCategory: 'all',
+      searchTerm: ''
+    };
+
+    const saveStateToStorage = () => {
+      storage.save('menuDishes', appState.dishes);
+    };
+
+    // DOM元素
+    const elements = {
+      menuBtn: document.getElementById('menu-btn'),
+      addDishBtn: document.getElementById('add-dish-btn'),
+      orderBtn: document.getElementById('order-btn'),
+      mobileMenuBtn: document.getElementById('mobile-menu-btn'),
+      mobileMenu: document.getElementById('mobile-menu'),
+      mobileMenuBtnItem: document.getElementById('mobile-menu-btn-item'),
+      mobileAddDishBtn: document.getElementById('mobile-add-dish-btn'),
+      mobileOrderBtn: document.getElementById('mobile-order-btn'),
+      cartCount: document.getElementById('cart-count'),
+      mobileCartCount: document.getElementById('mobile-cart-count'),
+      menuSection: document.getElementById('menu-section'),
+      addDishSection: document.getElementById('add-dish-section'),
+      orderSection: document.getElementById('order-section'),
+      dishesContainer: document.getElementById('dishes-container'),
+      emptyMenu: document.getElementById('empty-menu'),
+      searchInput: document.getElementById('search-input'),
+      categoryBtns: document.querySelectorAll('.category-btn'),
+      addDishForm: document.getElementById('add-dish-form'),
+      cancelAddDish: document.getElementById('cancel-add-dish'),
+      dishName: document.getElementById('dish-name'),
+      dishPrice: document.getElementById('dish-price'),
+      dishCategory: document.getElementById('dish-category'),
+      dishDescription: document.getElementById('dish-description'),
+      dishImage: document.getElementById('dish-image'),
+      orderItemsContainer: document.getElementById('order-items-container'),
+      emptyOrder: document.getElementById('empty-order'),
+      orderFooter: document.getElementById('order-footer'),
+      subtotal: document.getElementById('subtotal'),
+      total: document.getElementById('total'),
+      clearOrder: document.getElementById('clear-order'),
+      confirmOrder: document.getElementById('confirm-order'),
+      goToMenuFromOrder: document.getElementById('go-to-menu-from-order'),
+      orderSuccessModal: document.getElementById('order-success-modal'),
+      modalContent: document.getElementById('modal-content'),
+      closeModal: document.getElementById('close-modal')
+    };
+
+    // 工具函数
+    const utils = {
+      generateId: () => Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+      formatPrice: (price) => `¥${price.toFixed(2)}`,
+      filterDishes: () => {
+        return appState.dishes.filter(dish => {
+          const matchesCategory = appState.currentCategory === 'all' || dish.category === appState.currentCategory;
+          const matchesSearch = dish.name.toLowerCase().includes(appState.searchTerm.toLowerCase()) || 
+                               dish.description.toLowerCase().includes(appState.searchTerm.toLowerCase());
+          return matchesCategory && matchesSearch;
+        });
+      }
+    };
+
+    // 渲染函数
+    const render = {
+      dishes: () => {
+        const filteredDishes = utils.filterDishes();
+        elements.dishesContainer.innerHTML = '';
+        
+        if (filteredDishes.length === 0) {
+          elements.emptyMenu.classList.remove('hidden');
+          return;
+        }
+        
+        elements.emptyMenu.classList.add('hidden');
+        
+        filteredDishes.forEach(dish => {
+          const cartItem = appState.cart.find(item => item.id === dish.id.toString());
+          const quantity = cartItem ? cartItem.quantity : 0;
+          
+          const dishCard = document.createElement('div');
+          dishCard.className = 'bg-white rounded-xl overflow-hidden card-shadow hover-scale';
+          dishCard.innerHTML = `
+            <div class="relative h-48 overflow-hidden">
+              <img src="${dish.image}" alt="${dish.name}" class="w-full h-full object-cover">
+              <span class="absolute top-3 right-3 bg-primary text-white text-sm px-2 py-1 rounded">${dish.category}</span>
+            </div>
+            <div class="p-4">
+              <h3 class="font-bold text-lg mb-1">${dish.name}</h3>
+              <p class="text-gray-600 text-sm mb-3 line-clamp-2">${dish.description || '无描述'}</p>
+              <div class="flex justify-between items-center">
+                <span class="text-primary font-bold">${utils.formatPrice(dish.price)}</span>
+                <div class="flex items-center">
+                  <button class="decrease-btn w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors ${quantity === 0 ? 'opacity-50 cursor-not-allowed' : ''}" data-id="${dish.id}">
+                    <i class="fa fa-minus text-sm"></i>
+                  </button>
+                  <span class="quantity mx-2 w-6 text-center">${quantity}</span>
+                  <button class="increase-btn w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center hover:bg-primary/90 transition-colors" data-id="${dish.id}">
+                    <i class="fa fa-plus text-sm"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+          elements.dishesContainer.appendChild(dishCard);
+        });
+        
+        // 添加事件监听
+        document.querySelectorAll('.increase-btn').forEach(btn => {
+          btn.addEventListener('click', () => actions.addToCart(btn.getAttribute('data-id')));
+        });
+        document.querySelectorAll('.decrease-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            if (!btn.classList.contains('opacity-50')) actions.removeFromCart(btn.getAttribute('data-id'));
+          });
+        });
+      },
+      
+      cart: () => {
+        const totalItems = appState.cart.reduce((sum, item) => sum + item.quantity, 0);
+        elements.cartCount.textContent = totalItems;
+        elements.mobileCartCount.textContent = totalItems;
+        
+        if (appState.cart.length === 0) {
+          elements.emptyOrder.classList.remove('hidden');
+          elements.orderItemsContainer.classList.add('hidden');
+          elements.orderFooter.classList.add('hidden');
+          return;
+        }
+        
+        elements.emptyOrder.classList.add('hidden');
+        elements.orderItemsContainer.classList.remove('hidden');
+        elements.orderFooter.classList.remove('hidden');
+        elements.orderItemsContainer.innerHTML = '';
+        
+        appState.cart.forEach(item => {
+          const dish = appState.dishes.find(d => d.id.toString() === item.id);
+          if (!dish) return;
+          
+          const itemTotal = dish.price * item.quantity;
+          const orderItem = document.createElement('div');
+          orderItem.className = 'p-4 border-b border-gray-100 flex items-center justify-between';
+          orderItem.innerHTML = `
+            <div class="flex items-center">
+              <img src="${dish.image}" alt="${dish.name}" class="w-16 h-16 object-cover rounded-lg mr-4">
+              <div>
+                <h4 class="font-medium">${dish.name}</h4>
+                <p class="text-sm text-gray-500">${utils.formatPrice(dish.price)}</p>
+              </div>
+            </div>
+            <div class="flex items-center">
+              <button class="order-decrease-btn w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors mr-2" data-id="${dish.id}">
+                <i class="fa fa-minus text-xs"></i>
+              </button>
+              <span class="w-6 text-center">${item.quantity}</span>
+              <button class="order-increase-btn w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors ml-2" data-id="${dish.id}">
+                <i class="fa fa-plus text-xs"></i>
+              </button>
+              <span class="ml-4 font-medium">${utils.formatPrice(itemTotal)}</span>
+            </div>
+          `;
+          elements.orderItemsContainer.appendChild(orderItem);
+        });
+        
+        document.querySelectorAll('.order-increase-btn').forEach(btn => {
+          btn.addEventListener('click', () => actions.addToCart(btn.getAttribute('data-id')));
+        });
+        document.querySelectorAll('.order-decrease-btn').forEach(btn => {
+          btn.addEventListener('click', () => actions.removeFromCart(btn.getAttribute('data-id')));
+        });
+        
+        const total = appState.cart.reduce((sum, item) => {
+          const dish = appState.dishes.find(d => d.id.toString() === item.id);
+          return sum + (dish ? dish.price * item.quantity : 0);
+        }, 0);
+        elements.subtotal.textContent = utils.formatPrice(total);
+        elements.total.textContent = utils.formatPrice(total);
+      },
+      
+      showSuccessModal: () => {
+        elements.orderSuccessModal.classList.remove('hidden');
+        setTimeout(() => {
+          elements.modalContent.classList.remove('scale-95', 'opacity-0');
+          elements.modalContent.classList.add('scale-100', 'opacity-100');
+        }, 10);
+      },
+      
+      hideSuccessModal: () => {
+        elements.modalContent.classList.remove('scale-100', 'opacity-100');
+        elements.modalContent.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => elements.orderSuccessModal.classList.add('hidden'), 300);
+      }
+    };
+
+    // 动作函数
+    const actions = {
+      showMenu: () => {
+        elements.menuSection.classList.remove('hidden');
+        elements.addDishSection.classList.add('hidden');
+        elements.orderSection.classList.add('hidden');
+        elements.menuBtn.classList.add('active', 'bg-primary/80');
+        elements.addDishBtn.classList.remove('active', 'bg-primary/80');
+        elements.orderBtn.classList.remove('active', 'bg-primary/80');
+        elements.mobileMenuBtnItem.classList.add('active', 'bg-primary/80');
+        elements.mobileAddDishBtn.classList.remove('active', 'bg-primary/80');
+        elements.mobileOrderBtn.classList.remove('active', 'bg-primary/80');
+        elements.mobileMenu.classList.add('hidden');
+      },
+      
+      showAddDish: () => {
+        elements.menuSection.classList.add('hidden');
+        elements.addDishSection.classList.remove('hidden');
+        elements.orderSection.classList.add('hidden');
+        elements.menuBtn.classList.remove('active', 'bg-primary/80');
+        elements.addDishBtn.classList.add('active', 'bg-primary/80');
+        elements.orderBtn.classList.remove('active', 'bg-primary/80');
+        elements.mobileMenuBtnItem.classList.remove('active', 'bg-primary/80');
+        elements.mobileAddDishBtn.classList.add('active', 'bg-primary/80');
+        elements.mobileOrderBtn.classList.remove('active', 'bg-primary/80');
+        elements.mobileMenu.classList.add('hidden');
+      },
+      
+      showOrder: () => {
+        elements.menuSection.classList.add('hidden');
+        elements.addDishSection.classList.add('hidden');
+        elements.orderSection.classList.remove('hidden');
+        elements.menuBtn.classList.remove('active', 'bg-primary/80');
+        elements.addDishBtn.classList.remove('active', 'bg-primary/80');
+        elements.orderBtn.classList.add('active', 'bg-primary/80');
+        elements.mobileMenuBtnItem.classList.remove('active', 'bg-primary/80');
+        elements.mobileAddDishBtn.classList.remove('active', 'bg-primary/80');
+        elements.mobileOrderBtn.classList.add('active', 'bg-primary/80');
+        elements.mobileMenu.classList.add('hidden');
+        render.cart();
+      },
+      
+      addToCart: (dishId) => {
+        const existingItem = appState.cart.find(item => item.id === dishId);
+        if (existingItem) existingItem.quantity += 1;
+        else appState.cart.push({ id: dishId, quantity: 1 });
+        render.dishes();
+        render.cart();
+      },
+      
+      removeFromCart: (dishId) => {
+        const existingItemIndex = appState.cart.findIndex(item => item.id === dishId);
+        if (existingItemIndex !== -1) {
+          if (appState.cart[existingItemIndex].quantity > 1) {
+            appState.cart[existingItemIndex].quantity -= 1;
+          } else {
+            appState.cart.splice(existingItemIndex, 1);
+          }
+        }
+        render.dishes();
+        render.cart();
+      },
+      
+      addNewDish: (e) => {
+        e.preventDefault();
+        const name = elements.dishName.value.trim();
+        const price = parseFloat(elements.dishPrice.value);
+        const category = elements.dishCategory.value;
+        const description = elements.dishDescription.value.trim();
+        
+        if (!name || !price || !category) return;
+        
+        let image = 'https://picsum.photos/seed/default/300/200';
+        const fileInput = elements.dishImage;
+        
+        if (fileInput.files && fileInput.files[0]) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            image = e.target.result;
+            saveDish(image);
+          };
+          reader.readAsDataURL(fileInput.files[0]);
+        } else {
+          saveDish(image);
+        }
+        
+        function saveDish(imageUrl) {
+          appState.dishes.push({
+            id: utils.generateId(),
+            name,
+            price,
+            category,
+            description,
+            image: imageUrl
+          });
+          saveStateToStorage();
+          elements.addDishForm.reset();
+          actions.showMenu();
+          render.dishes();
+        }
+      },
+      
+      clearOrder: () => {
+        appState.cart = [];
+        render.cart();
+        render.dishes();
+      },
+      
+      confirmOrder: () => {
+        if (appState.cart.length === 0) return;
+        render.showSuccessModal();
+        appState.cart = [];
+      },
+      
+      changeCategory: (category) => {
+        appState.currentCategory = category;
+        elements.categoryBtns.forEach(btn => {
+          if (btn.getAttribute('data-category') === category) {
+            btn.classList.add('bg-primary', 'text-white');
+            btn.classList.remove('bg-gray-200', 'hover:bg-gray-300');
+          } else {
+            btn.classList.remove('bg-primary', 'text-white');
+            btn.classList.add('bg-gray-200', 'hover:bg-gray-300');
+          }
+        });
+        render.dishes();
+      },
+      
+      searchDishes: (term) => {
+        appState.searchTerm = term;
+        render.dishes();
+      }
+    };
+
+    // 初始化事件监听
+    function initEventListeners() {
+      elements.menuBtn.addEventListener('click', actions.showMenu);
+      elements.addDishBtn.addEventListener('click', actions.showAddDish);
+      elements.orderBtn.addEventListener('click', actions.showOrder);
+      elements.mobileMenuBtn.addEventListener('click', () => elements.mobileMenu.classList.toggle('hidden'));
+      elements.mobileMenuBtnItem.addEventListener('click', actions.showMenu);
+      elements.mobileAddDishBtn.addEventListener('click', actions.showAddDish);
+      elements.mobileOrderBtn.addEventListener('click', actions.showOrder);
+      elements.addDishForm.addEventListener('submit', actions.addNewDish);
+      elements.cancelAddDish.addEventListener('click', actions.showMenu);
+      elements.clearOrder.addEventListener('click', actions.clearOrder);
+      elements.confirmOrder.addEventListener('click', actions.confirmOrder);
+      elements.goToMenuFromOrder.addEventListener('click', actions.showMenu);
+      elements.closeModal.addEventListener('click', () => {
+        render.hideSuccessModal();
+        render.cart();
+        render.dishes();
+        actions.showMenu();
+      });
+      elements.orderSuccessModal.addEventListener('click', (e) => {
+        if (e.target === elements.orderSuccessModal) {
+          render.hideSuccessModal();
+          render.cart();
+          render.dishes();
+          actions.showMenu();
+        }
+      });
+      elements.categoryBtns.forEach(btn => {
+        btn.addEventListener('click', () => actions.changeCategory(btn.getAttribute('data-category')));
+      });
+      elements.searchInput.addEventListener('input', (e) => actions.searchDishes(e.target.value));
+      
+      // 滚动时改变导航栏样式
+      window.addEventListener('scroll', () => {
+        const header = document.querySelector('header');
+        if (window.scrollY > 10) {
+          header.classList.add('py-2');
+          header.classList.remove('py-3');
+        } else {
+          header.classList.add('py-3');
+          header.classList.remove('py-2');
+        }
+      });
+    }
+
+    // 初始化应用
+    function initApp() {
+      initEventListeners();
+      render.dishes();
+      render.cart();
+      actions.showMenu();
+    }
+
+    document.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>
