@@ -1,23 +1,20 @@
 {
   "name": "吴佳怡的menu",
   "short_name": "佳怡menu",
-  "description": "吴佳怡的个性化点菜系统，支持菜品管理和订单功能",
-  "start_url": ".",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#f1faee",
   "theme_color": "#e63946",
   "icons": [
     {
-      "src": "https://i.ibb.co/rGbQV6P/46f45c03a87a6203248f509d9a23c8c3.jpg",
-      "sizes": "192x192",
-      "type": "image/jpeg"
+      "src": "https://picsum.photos/seed/jymenu/128/128",
+      "sizes": "128x128",
+      "type": "image/png"
     },
     {
-      "src": "https://i.ibb.co/rGbQV6P/46f45c03a87a6203248f509d9a23c8c3.jpg",
-      "sizes": "512x512",
-      "type": "image/jpeg"
+      "src": "https://picsum.photos/seed/jymenu/192/192",
+      "sizes": "192x192",
+      "type": "image/png"
     }
-  ],
-  "prefer_related_applications": false,
-  "related_applications": []
+  ]
 }
