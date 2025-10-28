@@ -416,5 +416,13 @@ const initEvents = () => {
 window.addEventListener('DOMContentLoaded', () => {
   initEvents(); // 初始化事件
   updateCartCount(); // 更新购物车数量
-  loadDishes(); // 加载菜品数据（关键：确保页面加载时执行）
+  loadDishes(); // 加载菜品数据（原代码）
+  
+  // 添加以下代码：强制显示默认菜品（防止云端加载失败）
+  setTimeout(() => {
+    if (appState.dishes.length === 0) {
+      appState.dishes = defaultDishes;
+      renderDishes();
+    }
+  }, 3000); // 3秒后如果仍无数据，强制显示默认菜品
 });
