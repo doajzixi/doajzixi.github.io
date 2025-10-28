@@ -4,35 +4,34 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#e63946">
-  <!-- 修复：使用稳定的图标链接（替换为picsum稳定链接） -->
-  <link rel="apple-touch-icon" href="https://picsum.photos/seed/jyicon/128/128">
+  <!-- 自定义图标（使用稳定图片链接） -->
+  <link rel="apple-touch-icon" href="https://picsum.photos/seed/jymenu/128/128">
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="https://picsum.photos/seed/jyicon/64/64">
+  <link rel="icon" href="https://picsum.photos/seed/jymenu/64/64">
   <title>吴佳怡的menu</title>
+  <!-- 外部资源（样式和图标） -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
-  
-  <!-- 引入Firebase（兼容版，避免版本冲突） -->
+  <!-- Firebase（数据同步） -->
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
-  
-  <!-- Tailwind 配置 -->
+
+  <!-- Tailwind样式配置 -->
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            primary: '#e63946',
-            secondary: '#ffb703',
-            neutral: '#f1faee',
-            dark: '#1d3557',
-            light: '#a8dadc'
+            primary: '#e63946',    // 红色主色
+            secondary: '#ffb703',  // 黄色辅助色
+            neutral: '#f1faee',    // 浅色背景
+            dark: '#1d3557',       // 深色文字
+            light: '#a8dadc'       // 浅色文字
           }
         }
       }
     }
   </script>
-  
   <style type="text/tailwindcss">
     @layer utilities {
       .content-auto { content-visibility: auto; }
@@ -43,7 +42,6 @@
     }
   </style>
 </head>
-
 <body class="bg-neutral min-h-screen">
   <!-- 导航栏 -->
   <header class="bg-primary text-white shadow-md sticky top-0 z-50">
@@ -53,6 +51,7 @@
         <h1 class="text-xl font-bold">吴佳怡的menu</h1>
       </div>
       
+      <!-- 电脑端导航 -->
       <div class="hidden md:flex items-center space-x-6">
         <button id="menu-btn" class="flex items-center space-x-1 active px-3 py-1 rounded">
           <i class="fa fa-list"></i>
@@ -95,8 +94,9 @@
     </div>
   </header>
 
+  <!-- 主内容区 -->
   <main class="container mx-auto px-4 py-6">
-    <!-- 菜品列表区域 -->
+    <!-- 1. 菜品列表区域 -->
     <section id="menu-section" class="space-y-6">
       <!-- 同步状态提示 -->
       <div id="sync-status" class="bg-blue-50 text-blue-700 p-3 rounded-lg text-sm flex items-center hidden">
@@ -122,7 +122,7 @@
         </div>
       </div>
       
-      <!-- 菜品列表 -->
+      <!-- 菜品列表容器 -->
       <div id="dishes-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         <!-- 菜品将通过JS动态生成 -->
       </div>
@@ -134,7 +134,7 @@
       </div>
     </section>
     
-    <!-- 添加菜品区域 -->
+    <!-- 2. 添加菜品区域 -->
     <section id="add-dish-section" class="hidden max-w-2xl mx-auto">
       <div class="bg-white rounded-xl shadow-lg p-6 md:p-8">
         <h2 class="text-2xl font-bold mb-6 flex items-center">
@@ -148,7 +148,6 @@
               <input type="text" id="dish-name" required 
                      class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
             </div>
-            
             <div>
               <label for="dish-price" class="block text-sm font-medium text-gray-700 mb-1">价格 (元) *</label>
               <input type="number" id="dish-price" min="0" step="0.01" required 
@@ -191,7 +190,7 @@
       </div>
     </section>
     
-    <!-- 订单区域 -->
+    <!-- 3. 订单区域 -->
     <section id="order-section" class="hidden max-w-4xl mx-auto">
       <div class="bg-white rounded-xl shadow-lg overflow-hidden">
         <div class="p-6 border-b border-gray-100">
@@ -209,12 +208,12 @@
           </button>
         </div>
         
-        <!-- 订单列表 -->
+        <!-- 订单列表容器 -->
         <div id="order-items-container" class="max-h-[500px] overflow-y-auto">
           <!-- 订单项目将通过JS动态生成 -->
         </div>
         
-        <!-- 订单底部 -->
+        <!-- 订单底部（总价和按钮） -->
         <div id="order-footer" class="p-6 border-t border-gray-100 hidden">
           <div class="flex justify-between mb-4">
             <span class="text-gray-600">小计</span>
@@ -254,31 +253,13 @@
     </div>
   </div>
 
+  <!-- 页脚 -->
   <footer class="bg-dark text-white py-6 mt-12">
     <div class="container mx-auto px-4 text-center">
       <p>© 吴佳怡点菜系统 - 多设备同步版</p>
     </div>
   </footer>
 
-  <!-- 1. 注册服务工作线程（支持PWA离线功能） -->
+  <!-- 核心功能JS -->
   <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js')
-          .then((registration) => {
-            console.log('服务工作线程注册成功:', registration.scope);
-          })
-          .catch((err) => {
-            console.log('服务工作线程注册失败:', err);
-          });
-      });
-    }
-  </script>
-
-  <!-- 2. Firebase初始化及核心功能（修复图片和数据加载） -->
-  <script>
-    // Firebase配置（使用公开测试库，确保可用）
-    const firebaseConfig = {
-      apiKey: "AIzaSyC63j2gD2aK5t6z7b8x9c0v1b2n3m4k5l6o",
-      authDomain: "test-menu-app-123.firebaseapp.com",
-      databaseURL: "https://test
+    // 1. 初始化Fire
