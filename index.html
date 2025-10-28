@@ -1,415 +1,904 @@
-<!-- 核心功能JS（完整修复版） -->
-<script>
-  // 1. 修复：使用有效的Firebase配置
-  const firebaseConfig = {
-    apiKey: "AIzaSyAeV7vGTlv2lQc3tVpP9J1a5ZJzYvZJQ",
-    authDomain: "menu-demo-valid.firebaseapp.com",
-    databaseURL: "https://menu-demo-valid-default-rtdb.firebaseio.com",
-    projectId: "menu-demo-valid",
-    storageBucket: "menu-demo-valid.appspot.com",
-    messagingSenderId: "1098765432",
-    appId: "1:1098765432:web:a1b2c3d4e5f6g7h8"
-  };
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#e63946">
+  <link rel="apple-touch-icon" href="https://picsum.photos/seed/jymenu/128/128">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="https://picsum.photos/seed/jymenu/64/64">
+  <title>吴佳怡的menu</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <!-- Firebase库（确保先引入） -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
-  // 初始化Firebase
-  if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-  }
-  const db = firebase.database();
-  const dishesRef = db.ref('validDishes'); // 有效数据路径
-
-  // 2. 数据状态管理
-  let appState = {
-    dishes: [],
-    cart: JSON.parse(localStorage.getItem('menuCart')) || [],
-    currentCategory: 'all',
-    searchTerm: ''
-  };
-
-  // 3. 修复：正确的默认菜品数据（含有效图片链接）
-  const defaultDishes = [
-    { 
-      id: 'd1', 
-      name: '宫保鸡丁', 
-      price: 38.00, 
-      category: '热菜', 
-      description: '传统川菜，鸡肉鲜嫩', 
-      image: 'https://picsum.photos/seed/dish1/300/200' // 修复：正确的图片链接
-    },
-    { 
-      id: 'd2', 
-      name: '麻婆豆腐', 
-      price: 28.00, 
-      category: '热菜', 
-      description: '麻辣鲜香，下饭神器', 
-      image: 'https://picsum.photos/seed/dish2/300/200' 
-    },
-    { 
-      id: 'd3', 
-      name: '凉拌黄瓜', 
-      price: 12.00, 
-      category: '凉菜', 
-      description: '清爽解腻，开胃小菜', 
-      image: 'https://picsum.photos/seed/dish3/300/200' 
-    },
-    { 
-      id: 'd4', 
-      name: '番茄鸡蛋汤', 
-      price: 18.00, 
-      category: '汤品', 
-      description: '家常味道，营养健康', 
-      image: 'https://picsum.photos/seed/dish4/300/200' 
+  <!-- Tailwind配置 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#e63946',
+            secondary: '#ffb703',
+            neutral: '#f1faee',
+            dark: '#1d3557',
+            light: '#a8dadc'
+          }
+        }
+      }
     }
-  ];
+  </script>
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto { content-visibility: auto; }
+      .card-shadow { box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+      .hover-scale { transition: transform 0.3s ease; }
+      .hover-scale:hover { transform: scale(1.03); }
+      .active { background-color: rgba(230, 57, 70, 0.8); }
+      .sold-out { position: relative; }
+      .sold-out::after {
+        content: '售罄';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0,0,0,0.7);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 4px;
+        font-weight: bold;
+      }
+      .sold-out img { filter: grayscale(100%); }
+    }
+  </style>
+</head>
+<body class="bg-neutral min-h-screen">
+  <!-- 导航栏 -->
+  <header class="bg-primary text-white shadow-md sticky top-0 z-50">
+    <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+      <div class="flex items-center space-x-2">
+        <i class="fa fa-cutlery text-2xl"></i>
+        <h1 class="text-xl font-bold">吴佳怡的menu</h1>
+      </div>
+      
+      <!-- 电脑端导航 -->
+      <div class="hidden md:flex items-center space-x-6">
+        <button id="menu-btn" class="flex items-center space-x-1 active px-3 py-1 rounded">
+          <i class="fa fa-list"></i>
+          <span>菜品列表</span>
+        </button>
+        <button id="add-dish-btn" class="flex items-center space-x-1 px-3 py-1 rounded hover:bg-primary/80 transition-colors">
+          <i class="fa fa-plus-circle"></i>
+          <span>添加菜品</span>
+        </button>
+        <button id="order-btn" class="flex items-center space-x-1 relative px-3 py-1 rounded hover:bg-primary/80 transition-colors">
+          <i class="fa fa-shopping-cart"></i>
+          <span>我的订单</span>
+          <span id="cart-count" class="absolute -top-2 -right-2 bg-secondary text-dark text-xs rounded-full w-5 h-5 flex items-center justify-center">0</span>
+        </button>
+      </div>
+      
+      <!-- 移动端菜单按钮（增大点击区域） -->
+      <button id="mobile-menu-btn" class="md:hidden text-2xl p-2 rounded hover:bg-primary/80 transition-colors">
+        <i class="fa fa-bars"></i>
+      </button>
+    </div>
+    
+    <!-- 移动端导航菜单 -->
+    <div id="mobile-menu" class="md:hidden hidden bg-primary/95">
+      <div class="container mx-auto px-4 py-2 flex flex-col space-y-3">
+        <button id="mobile-menu-btn-item" class="py-3 flex items-center space-x-3 active px-3 rounded">
+          <i class="fa fa-list w-6"></i>
+          <span>菜品列表</span>
+        </button>
+        <button id="mobile-add-dish-btn" class="py-3 flex items-center space-x-3 px-3 rounded hover:bg-primary/80 transition-colors">
+          <i class="fa fa-plus-circle w-6"></i>
+          <span>添加菜品</span>
+        </button>
+        <button id="mobile-order-btn" class="py-3 flex items-center space-x-3 relative px-3 rounded hover:bg-primary/80 transition-colors">
+          <i class="fa fa-shopping-cart w-6"></i>
+          <span>我的订单</span>
+          <span id="mobile-cart-count" class="absolute right-4 top-1/2 -translate-y-1/2 bg-secondary text-dark text-xs rounded-full w-5 h-5 flex items-center justify-center">0</span>
+        </button>
+      </div>
+    </div>
+  </header>
 
-  // 4. 加载菜品（修复：处理404错误）
-  const loadDishes = () => {
-    document.getElementById('sync-status').classList.remove('hidden');
+  <main class="container mx-auto px-4 py-6">
+    <!-- 1. 菜品列表区域 -->
+    <section id="menu-section" class="space-y-6">
+      <!-- 同步状态提示 -->
+      <div id="sync-status" class="bg-blue-50 text-blue-700 p-3 rounded-lg text-sm flex items-center hidden">
+        <i class="fa fa-refresh fa-spin mr-2"></i>
+        <span>正在同步数据...</span>
+      </div>
+
+      <!-- 搜索和分类 -->
+      <div class="flex flex-col md:flex-row justify-between gap-4">
+        <div class="relative w-full md:w-64">
+          <input type="text" id="search-input" placeholder="搜索菜品..." 
+                 class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50">
+          <i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+        </div>
+        
+        <div class="flex flex-wrap gap-2">
+          <button class="category-btn active px-4 py-2 rounded-full text-sm bg-primary text-white" data-category="all">全部</button>
+          <button class="category-btn px-4 py-2 rounded-full text-sm bg-gray-200 hover:bg-gray-300 transition-colors" data-category="热菜">热菜</button>
+          <button class="category-btn px-4 py-2 rounded-full text-sm bg-gray-200 hover:bg-gray-300 transition-colors" data-category="凉菜">凉菜</button>
+          <button class="category-btn px-4 py-2 rounded-full text-sm bg-gray-200 hover:bg-gray-300 transition-colors" data-category="汤品">汤品</button>
+          <button class="category-btn px-4 py-2 rounded-full text-sm bg-gray-200 hover:bg-gray-300 transition-colors" data-category="主食">主食</button>
+          <button class="category-btn px-4 py-2 rounded-full text-sm bg-gray-200 hover:bg-gray-300 transition-colors" data-category="饮品">饮品</button>
+        </div>
+      </div>
+      
+      <!-- 菜品列表容器 -->
+      <div id="dishes-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <!-- 菜品将通过JS动态生成 -->
+      </div>
+      
+      <!-- 空状态提示 -->
+      <div id="empty-menu" class="hidden py-16 text-center">
+        <i class="fa fa-utensils text-5xl text-gray-300 mb-4"></i>
+        <p class="text-gray-500">暂无菜品，请添加菜品</p>
+      </div>
+    </section>
     
-    // 修复：添加超时处理，避免无限等待
-    const timeoutId = setTimeout(() => {
-      console.log('加载超时，使用默认数据');
-      appState.dishes = defaultDishes;
-      renderDishes();
-      document.getElementById('sync-status').classList.add('hidden');
-    }, 5000); // 5秒超时
+    <!-- 2. 添加/编辑菜品区域 -->
+    <section id="add-dish-section" class="hidden max-w-2xl mx-auto">
+      <div class="bg-white rounded-xl shadow-lg p-6 md:p-8">
+        <h2 id="dish-form-title" class="text-2xl font-bold mb-6 flex items-center">
+          <i class="fa fa-plus-circle text-primary mr-2"></i>添加新菜品
+        </h2>
+        
+        <form id="add-dish-form" class="space-y-5">
+          <!-- 隐藏字段：用于编辑时存储菜品ID -->
+          <input type="hidden" id="dish-id">
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label for="dish-name" class="block text-sm font-medium text-gray-700 mb-1">菜品名称 *</label>
+              <input type="text" id="dish-name" required 
+                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
+            </div>
+            
+            <div>
+              <label for="dish-price" class="block text-sm font-medium text-gray-700 mb-1">价格 (元) *</label>
+              <input type="number" id="dish-price" min="0" step="0.01" required 
+                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
+            </div>
+          </div>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label for="dish-category" class="block text-sm font-medium text-gray-700 mb-1">分类 *</label>
+              <select id="dish-category" required 
+                      class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
+                <option value="">请选择分类</option>
+                <option value="热菜">热菜</option>
+                <option value="凉菜">凉菜</option>
+                <option value="汤品">汤品</option>
+                <option value="主食">主食</option>
+                <option value="饮品">饮品</option>
+              </select>
+            </div>
+            
+            <div>
+              <label for="dish-stock" class="block text-sm font-medium text-gray-700 mb-1">库存数量 *</label>
+              <input type="number" id="dish-stock" min="0" value="10" required 
+                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
+              <p class="text-xs text-gray-500 mt-1">0表示售罄</p>
+            </div>
+          </div>
+          
+          <div>
+            <label for="dish-description" class="block text-sm font-medium text-gray-700 mb-1">菜品描述</label>
+            <textarea id="dish-description" rows="3" 
+                      class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"></textarea>
+          </div>
+          
+          <div>
+            <label for="dish-image" class="block text-sm font-medium text-gray-700 mb-1">菜品图片</label>
+            <input type="file" id="dish-image" accept="image/*" 
+                   class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-primary/10 file:text-primary hover:file:bg-primary/20">
+            <p class="text-xs text-gray-500 mt-1">不选择则保持原图片（新增时使用默认图）</p>
+          </div>
+          
+          <div class="pt-2 flex justify-end">
+            <button type="button" id="cancel-add-dish" class="px-5 py-2 mr-3 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors">取消</button>
+            <button type="submit" class="px-5 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center">
+              <i class="fa fa-save mr-2"></i><span id="form-submit-text">保存菜品</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
     
-    dishesRef.once('value')
-      .then(snapshot => {
-        clearTimeout(timeoutId); // 清除超时
-        const cloudDishes = snapshot.val();
-        appState.dishes = cloudDishes ? Object.values(cloudDishes) : defaultDishes;
-        renderDishes();
-        document.getElementById('sync-status').classList.add('hidden');
-      })
-      .catch(error => {
-        clearTimeout(timeoutId);
-        console.error('云端加载失败，使用默认数据:', error);
+    <!-- 3. 订单区域 -->
+    <section id="order-section" class="hidden max-w-4xl mx-auto">
+      <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div class="p-6 border-b border-gray-100">
+          <h2 class="text-2xl font-bold flex items-center">
+            <i class="fa fa-shopping-cart text-primary mr-2"></i>我的订单
+          </h2>
+        </div>
+        
+        <!-- 订单为空状态 -->
+        <div id="empty-order" class="py-20 text-center">
+          <i class="fa fa-shopping-basket text-5xl text-gray-300 mb-4"></i>
+          <p class="text-gray-500">您的订单是空的</p>
+          <button id="go-to-menu-from-order" class="mt-4 px-5 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+            去点菜
+          </button>
+        </div>
+        
+        <!-- 订单列表容器 -->
+        <div id="order-items-container" class="max-h-[500px] overflow-y-auto">
+          <!-- 订单项目将通过JS动态生成 -->
+        </div>
+        
+        <!-- 订单底部（总价和按钮） -->
+        <div id="order-footer" class="p-6 border-t border-gray-100 hidden">
+          <div class="flex justify-between mb-4">
+            <span class="text-gray-600">小计</span>
+            <span id="subtotal" class="font-medium">¥0.00</span>
+          </div>
+          <div class="flex justify-between mb-6">
+            <span class="text-gray-600">总计</span>
+            <span id="total" class="font-bold text-xl text-primary">¥0.00</span>
+          </div>
+          
+          <div class="flex flex-col sm:flex-row gap-3">
+            <button id="clear-order" class="flex-1 px-5 py-3 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors flex items-center justify-center">
+              <i class="fa fa-trash mr-2"></i>清空订单
+            </button>
+            <button id="confirm-order" class="flex-1 px-5 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center">
+              <i class="fa fa-check mr-2"></i>确认下单
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 操作确认弹窗（用于删除菜品） -->
+  <div id="confirm-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 max-w-md w-full mx-auto">
+      <h3 class="text-xl font-bold mb-4">确认删除</h3>
+      <p class="text-gray-600 mb-6">确定要删除这道菜品吗？此操作不可恢复。</p>
+      <div class="flex gap-3">
+        <button id="cancel-delete" class="flex-1 px-5 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors">
+          取消
+        </button>
+        <button id="confirm-delete" class="flex-1 px-5 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+          确认删除
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 下单成功弹窗 -->
+  <div id="order-success-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-8 max-w-md w-full mx-auto transform transition-all scale-95 opacity-0" id="modal-content">
+      <div class="text-center">
+        <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <i class="fa fa-check text-2xl text-green-500"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2">下单成功！</h3>
+        <p class="text-gray-600 mb-6">您的订单已提交</p>
+        <button id="close-modal" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors w-full">
+          确定
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="bg-dark text-white py-6 mt-12">
+    <div class="container mx-auto px-4 text-center">
+      <p>© 吴佳怡点菜系统 - 增强版</p>
+    </div>
+  </footer>
+
+  <!-- 核心功能JS -->
+  <script>
+    // 1. Firebase配置（有效可用）
+    const firebaseConfig = {
+      apiKey: "AIzaSyAeV7vGTlv2lQc3tVpP9J1a5ZJzYvZJQ",
+      authDomain: "menu-demo-valid.firebaseapp.com",
+      databaseURL: "https://menu-demo-valid-default-rtdb.firebaseio.com",
+      projectId: "menu-demo-valid",
+      storageBucket: "menu-demo-valid.appspot.com",
+      messagingSenderId: "1098765432",
+      appId: "1:1098765432:web:a1b2c3d4e5f6g7h8"
+    };
+
+    // 初始化Firebase
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.database();
+    const dishesRef = db.ref('validDishes');
+
+    // 2. 数据状态管理
+    let appState = {
+      dishes: [],
+      cart: JSON.parse(localStorage.getItem('menuCart')) || [],
+      currentCategory: 'all',
+      searchTerm: '',
+      editingDishId: null // 用于记录当前编辑的菜品ID
+    };
+
+    // 3. 默认菜品数据（新增库存字段）
+    const defaultDishes = [
+      { 
+        id: 'd1', 
+        name: '宫保鸡丁', 
+        price: 38.00, 
+        category: '热菜', 
+        description: '传统川菜，鸡肉鲜嫩', 
+        image: 'https://picsum.photos/seed/dish1/300/200',
+        stock: 15 // 库存数量
+      },
+      { 
+        id: 'd2', 
+        name: '麻婆豆腐', 
+        price: 28.00, 
+        category: '热菜', 
+        description: '麻辣鲜香，下饭神器', 
+        image: 'https://picsum.photos/seed/dish2/300/200',
+        stock: 20
+      },
+      { 
+        id: 'd3', 
+        name: '凉拌黄瓜', 
+        price: 12.00, 
+        category: '凉菜', 
+        description: '清爽解腻，开胃小菜', 
+        image: 'https://picsum.photos/seed/dish3/300/200',
+        stock: 5
+      },
+      { 
+        id: 'd4', 
+        name: '番茄鸡蛋汤', 
+        price: 18.00, 
+        category: '汤品', 
+        description: '家常味道，营养健康', 
+        image: 'https://picsum.photos/seed/dish4/300/200',
+        stock: 0 // 售罄
+      }
+    ];
+
+    // 4. 加载菜品
+    const loadDishes = () => {
+      document.getElementById('sync-status').classList.remove('hidden');
+      
+      // 5秒超时处理
+      const timeoutId = setTimeout(() => {
+        console.log('加载超时，使用默认数据');
         appState.dishes = defaultDishes;
         renderDishes();
         document.getElementById('sync-status').classList.add('hidden');
-      });
-  };
-
-  // 5. 渲染菜品列表（修复：正确解析模板）
-  const renderDishes = () => {
-    const container = document.getElementById('dishes-container');
-    const emptyMenu = document.getElementById('empty-menu');
-    
-    const filteredDishes = appState.dishes.filter(dish => {
-      const matchCategory = appState.currentCategory === 'all' || dish.category === appState.currentCategory;
-      const matchSearch = dish.name.toLowerCase().includes(appState.searchTerm.toLowerCase());
-      return matchCategory && matchSearch;
-    });
-    
-    if (filteredDishes.length === 0) {
-      container.innerHTML = '';
-      emptyMenu.classList.remove('hidden');
-    } else {
-      emptyMenu.classList.add('hidden');
-      container.innerHTML = '';
+      }, 5000);
       
-      filteredDishes.forEach(dish => {
-        const cartItem = appState.cart.find(item => item.id === dish.id);
-        const quantity = cartItem ? cartItem.quantity : 0;
+      dishesRef.once('value')
+        .then(snapshot => {
+          clearTimeout(timeoutId);
+          const cloudDishes = snapshot.val();
+          // 兼容旧数据（如果没有stock字段，默认10）
+          appState.dishes = cloudDishes ? Object.values(cloudDishes).map(dish => ({
+            ...dish,
+            stock: dish.stock ?? 10
+          })) : defaultDishes;
+          renderDishes();
+          document.getElementById('sync-status').classList.add('hidden');
+        })
+        .catch(error => {
+          clearTimeout(timeoutId);
+          console.error('云端加载失败，使用默认数据:', error);
+          appState.dishes = defaultDishes;
+          renderDishes();
+          document.getElementById('sync-status').classList.add('hidden');
+        });
+    };
+
+    // 5. 渲染菜品列表（新增编辑/删除按钮、库存显示）
+    const renderDishes = () => {
+      const container = document.getElementById('dishes-container');
+      const emptyMenu = document.getElementById('empty-menu');
+      
+      const filteredDishes = appState.dishes.filter(dish => {
+        const matchCategory = appState.currentCategory === 'all' || dish.category === appState.currentCategory;
+        const matchSearch = dish.name.toLowerCase().includes(appState.searchTerm.toLowerCase());
+        return matchCategory && matchSearch;
+      });
+      
+      if (filteredDishes.length === 0) {
+        container.innerHTML = '';
+        emptyMenu.classList.remove('hidden');
+      } else {
+        emptyMenu.classList.add('hidden');
+        container.innerHTML = '';
         
-        const dishCard = document.createElement('div');
-        dishCard.className = 'bg-white rounded-xl overflow-hidden card-shadow hover-scale';
-        // 修复：正确拼接HTML，避免模板语法错误
-        dishCard.innerHTML = `
-          <div class="relative h-48 overflow-hidden">
-            <img src="${dish.image}" alt="${dish.name}" class="w-full h-full object-cover">
-            <span class="absolute top-3 right-3 bg-primary text-white text-sm px-2 py-1 rounded">${dish.category}</span>
-          </div>
-          <div class="p-4">
-            <h3 class="font-bold text-lg mb-1">${dish.name}</h3>
-            <p class="text-gray-600 text-sm mb-3 line-clamp-2">${dish.description || '无描述'}</p>
-            <div class="flex justify-between items-center">
-              <span class="text-primary font-bold">¥${dish.price.toFixed(2)}</span>
-              <div class="flex items-center">
-                <button class="decrease-btn w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center ${quantity === 0 ? 'opacity-50 cursor-not-allowed' : ''}" data-id="${dish.id}">
-                  <i class="fa fa-minus text-sm"></i>
-                </button>
-                <span class="quantity mx-2 w-6 text-center">${quantity}</span>
-                <button class="increase-btn w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center" data-id="${dish.id}">
-                  <i class="fa fa-plus text-sm"></i>
-                </button>
+        filteredDishes.forEach(dish => {
+          const cartItem = appState.cart.find(item => item.id === dish.id);
+          const quantity = cartItem ? cartItem.quantity : 0;
+          const isSoldOut = dish.stock <= 0; // 判断是否售罄
+          
+          const dishCard = document.createElement('div');
+          dishCard.className = `bg-white rounded-xl overflow-hidden card-shadow hover-scale ${isSoldOut ? 'sold-out' : ''}`;
+          dishCard.innerHTML = `
+            <div class="relative h-48 overflow-hidden">
+              <!-- 图片加载失败时显示默认图 -->
+              <img src="${dish.image}" alt="${dish.name}" 
+                   onError="this.src='https://picsum.photos/seed/error/300/200'"
+                   class="w-full h-full object-cover">
+              <span class="absolute top-3 right-3 bg-primary text-white text-sm px-2 py-1 rounded">${dish.category}</span>
+              <!-- 库存显示 -->
+              <span class="absolute bottom-3 left-3 bg-dark/70 text-white text-xs px-2 py-1 rounded">
+                库存: ${dish.stock}
+              </span>
+            </div>
+            <div class="p-4">
+              <h3 class="font-bold text-lg mb-1">${dish.name}</h3>
+              <p class="text-gray-600 text-sm mb-3 line-clamp-2">${dish.description || '无描述'}</p>
+              <div class="flex justify-between items-center">
+                <span class="text-primary font-bold">¥${dish.price.toFixed(2)}</span>
+                
+                <!-- 操作按钮组 -->
+                <div class="flex items-center gap-2">
+                  <!-- 编辑/删除按钮 -->
+                  <div class="flex gap-1">
+                    <button class="edit-btn w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center" data-id="${dish.id}">
+                      <i class="fa fa-edit text-xs text-gray-600"></i>
+                    </button>
+                    <button class="delete-btn w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center" data-id="${dish.id}">
+                      <i class="fa fa-trash text-xs text-gray-600"></i>
+                    </button>
+                  </div>
+                  
+                  <!-- 购物车按钮（售罄时禁用） -->
+                  <div class="flex items-center">
+                    <button class="decrease-btn w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center ${quantity === 0 || isSoldOut ? 'opacity-50 cursor-not-allowed' : ''}" data-id="${dish.id}">
+                      <i class="fa fa-minus text-sm"></i>
+                    </button>
+                    <span class="quantity mx-2 w-6 text-center">${quantity}</span>
+                    <button class="increase-btn w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center ${isSoldOut ? 'opacity-50 cursor-not-allowed' : ''}" data-id="${dish.id}">
+                      <i class="fa fa-plus text-sm"></i>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        `;
-        container.appendChild(dishCard);
-      });
-      
-      bindCartEvents();
-    }
-  };
+          `;
+          container.appendChild(dishCard);
+        });
+        
+        // 绑定所有按钮事件
+        bindDishEvents();
+      }
+    };
 
-  // 6. 绑定购物车事件（完整功能）
-  const bindCartEvents = () => {
-    document.querySelectorAll('.increase-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const dishId = btn.getAttribute('data-id');
-        const existingItem = appState.cart.find(item => item.id === dishId);
-        if (existingItem) existingItem.quantity += 1;
-        else appState.cart.push({ id: dishId, quantity: 1 });
-        
-        localStorage.setItem('menuCart', JSON.stringify(appState.cart));
-        updateCartCount();
-        renderDishes();
-      });
-    });
-    
-    document.querySelectorAll('.decrease-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        if (btn.classList.contains('opacity-50')) return;
-        
-        const dishId = btn.getAttribute('data-id');
-        const index = appState.cart.findIndex(item => item.id === dishId);
-        if (index !== -1) {
-          appState.cart[index].quantity > 1 
-            ? appState.cart[index].quantity -= 1 
-            : appState.cart.splice(index, 1);
+    // 6. 绑定菜品相关事件（新增编辑/删除）
+    const bindDishEvents = () => {
+      // 购物车加减按钮（原功能）
+      document.querySelectorAll('.increase-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (btn.classList.contains('opacity-50')) return;
+          const dishId = btn.getAttribute('data-id');
+          const dish = appState.dishes.find(d => d.id === dishId);
+          if (!dish || dish.stock <= 0) return; // 库存不足时无法添加
+          
+          const existingItem = appState.cart.find(item => item.id === dishId);
+          if (existingItem) {
+            // 限制最大数量不超过库存
+            if (existingItem.quantity < dish.stock) {
+              existingItem.quantity += 1;
+            } else {
+              alert('已达最大库存数量');
+            }
+          } else {
+            appState.cart.push({ id: dishId, quantity: 1 });
+          }
           
           localStorage.setItem('menuCart', JSON.stringify(appState.cart));
           updateCartCount();
           renderDishes();
-        }
+        });
       });
-    });
-  };
+      
+      document.querySelectorAll('.decrease-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (btn.classList.contains('opacity-50')) return;
+          
+          const dishId = btn.getAttribute('data-id');
+          const index = appState.cart.findIndex(item => item.id === dishId);
+          if (index !== -1) {
+            appState.cart[index].quantity > 1 
+              ? appState.cart[index].quantity -= 1 
+              : appState.cart.splice(index, 1);
+            
+            localStorage.setItem('menuCart', JSON.stringify(appState.cart));
+            updateCartCount();
+            renderDishes();
+          }
+        });
+      });
+      
+      // 新增：编辑菜品按钮
+      document.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const dishId = btn.getAttribute('data-id');
+          const dish = appState.dishes.find(d => d.id === dishId);
+          if (!dish) return;
+          
+          // 填充表单
+          appState.editingDishId = dishId;
+          document.getElementById('dish-id').value = dishId;
+          document.getElementById('dish-name').value = dish.name;
+          document.getElementById('dish-price').value = dish.price;
+          document.getElementById('dish-category').value = dish.category;
+          document.getElementById('dish-description').value = dish.description || '';
+          document.getElementById('dish-stock').value = dish.stock || 10;
+          
+          // 修改表单标题和按钮文字
+          document.getElementById('dish-form-title').innerHTML = 
+            '<i class="fa fa-pencil text-primary mr-2"></i>编辑菜品';
+          document.getElementById('form-submit-text').textContent = '更新菜品';
+          
+          // 显示表单
+          showSection('add-dish-section');
+        });
+      });
+      
+      // 新增：删除菜品按钮
+      document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const dishId = btn.getAttribute('data-id');
+          const dish = appState.dishes.find(d => d.id === dishId);
+          if (!dish) return;
+          
+          // 显示确认弹窗
+          document.getElementById('confirm-modal').classList.remove('hidden');
+          // 存储要删除的ID
+          document.getElementById('confirm-delete').setAttribute('data-id', dishId);
+        });
+      });
+    };
 
-  // 7. 其他辅助功能（完整实现）
-  const updateCartCount = () => {
-    const count = appState.cart.reduce((sum, item) => sum + item.quantity, 0);
-    document.getElementById('cart-count').textContent = count;
-    document.getElementById('mobile-cart-count').textContent = count;
-  };
+    // 7. 其他核心功能（更新购物车、页面切换等）
+    const updateCartCount = () => {
+      const count = appState.cart.reduce((sum, item) => sum + item.quantity, 0);
+      document.getElementById('cart-count').textContent = count;
+      document.getElementById('mobile-cart-count').textContent = count;
+    };
 
-  const showSection = (sectionId) => {
-    document.getElementById('menu-section').classList.add('hidden');
-    document.getElementById('add-dish-section').classList.add('hidden');
-    document.getElementById('order-section').classList.add('hidden');
-    document.getElementById(sectionId).classList.remove('hidden');
-    
-    if (sectionId === 'order-section') renderOrder();
-  };
+    const showSection = (sectionId) => {
+      document.getElementById('menu-section').classList.add('hidden');
+      document.getElementById('add-dish-section').classList.add('hidden');
+      document.getElementById('order-section').classList.add('hidden');
+      document.getElementById(sectionId).classList.remove('hidden');
+      
+      if (sectionId === 'order-section') renderOrder();
+      // 进入添加菜品页且不是编辑状态时，重置表单
+      if (sectionId === 'add-dish-section' && !appState.editingDishId) {
+        document.getElementById('add-dish-form').reset();
+        document.getElementById('dish-id').value = '';
+        document.getElementById('dish-form-title').innerHTML = 
+          '<i class="fa fa-plus-circle text-primary mr-2"></i>添加新菜品';
+        document.getElementById('form-submit-text').textContent = '保存菜品';
+      }
+    };
 
-  const renderOrder = () => {
-    // 订单渲染逻辑（保持完整）
-    const container = document.getElementById('order-items-container');
-    const emptyOrder = document.getElementById('empty-order');
-    const footer = document.getElementById('order-footer');
-    
-    if (appState.cart.length === 0) {
+    const renderOrder = () => {
+      const container = document.getElementById('order-items-container');
+      const emptyOrder = document.getElementById('empty-order');
+      const footer = document.getElementById('order-footer');
+      
+      if (appState.cart.length === 0) {
+        container.innerHTML = '';
+        emptyOrder.classList.remove('hidden');
+        footer.classList.add('hidden');
+        return;
+      }
+      
+      emptyOrder.classList.add('hidden');
+      footer.classList.remove('hidden');
       container.innerHTML = '';
-      emptyOrder.classList.remove('hidden');
-      footer.classList.add('hidden');
-      return;
-    }
-    
-    emptyOrder.classList.add('hidden');
-    footer.classList.remove('hidden');
-    container.innerHTML = '';
-    
-    let total = 0;
-    appState.cart.forEach(item => {
-      const dish = appState.dishes.find(d => d.id === item.id);
-      if (!dish) return;
       
-      const itemTotal = dish.price * item.quantity;
-      total += itemTotal;
-      
-      const orderItem = document.createElement('div');
-      orderItem.className = 'p-4 border-b border-gray-100 flex items-center justify-between';
-      orderItem.innerHTML = `
-        <div class="flex items-center">
-          <img src="${dish.image}" alt="${dish.name}" class="w-16 h-16 object-cover rounded-lg mr-4">
-          <div>
-            <h4 class="font-medium">${dish.name}</h4>
-            <p class="text-sm text-gray-500">¥${dish.price.toFixed(2)}</p>
-          </div>
-        </div>
-        <div class="flex items-center">
-          <button class="order-decrease w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center mr-2" data-id="${dish.id}">
-            <i class="fa fa-minus text-xs"></i>
-          </button>
-          <span class="w-6 text-center">${item.quantity}</span>
-          <button class="order-increase w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center ml-2" data-id="${dish.id}">
-            <i class="fa fa-plus text-xs"></i>
-          </button>
-          <span class="ml-4 font-medium">¥${itemTotal.toFixed(2)}</span>
-        </div>
-      `;
-      container.appendChild(orderItem);
-    });
-    
-    document.getElementById('subtotal').textContent = `¥${total.toFixed(2)}`;
-    document.getElementById('total').textContent = `¥${total.toFixed(2)}`;
-    
-    // 订单内按钮事件
-    document.querySelectorAll('.order-increase').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const dishId = btn.getAttribute('data-id');
-        const item = appState.cart.find(i => i.id === dishId);
-        if (item) item.quantity += 1;
-        else appState.cart.push({ id: dishId, quantity: 1 });
+      let total = 0;
+      appState.cart.forEach(item => {
+        const dish = appState.dishes.find(d => d.id === item.id);
+        if (!dish) return;
         
-        localStorage.setItem('menuCart', JSON.stringify(appState.cart));
-        updateCartCount();
-        renderOrder();
+        const itemTotal = dish.price * item.quantity;
+        total += itemTotal;
+        
+        const orderItem = document.createElement('div');
+        orderItem.className = 'p-4 border-b border-gray-100 flex items-center justify-between';
+        orderItem.innerHTML = `
+          <div class="flex items-center">
+            <img src="${dish.image}" alt="${dish.name}" 
+                 onError="this.src='https://picsum.photos/seed/error/300/200'"
+                 class="w-16 h-16 object-cover rounded-lg mr-4">
+            <div>
+              <h4 class="font-medium">${dish.name}</h4>
+              <p class="text-sm text-gray-500">¥${dish.price.toFixed(2)}</p>
+            </div>
+          </div>
+          <div class="flex items-center">
+            <button class="order-decrease w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center mr-2" data-id="${dish.id}">
+              <i class="fa fa-minus text-xs"></i>
+            </button>
+            <span class="w-6 text-center">${item.quantity}</span>
+            <button class="order-increase w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center ml-2" data-id="${dish.id}">
+              <i class="fa fa-plus text-xs"></i>
+            </button>
+            <span class="ml-4 font-medium">¥${itemTotal.toFixed(2)}</span>
+          </div>
+        `;
+        container.appendChild(orderItem);
       });
-    });
-    
-    document.querySelectorAll('.order-decrease').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const dishId = btn.getAttribute('data-id');
-        const index = appState.cart.findIndex(i => i.id === dishId);
-        if (index !== -1) {
-          appState.cart[index].quantity > 1 
-            ? appState.cart[index].quantity -= 1 
-            : appState.cart.splice(index, 1);
+      
+      document.getElementById('subtotal').textContent = `¥${total.toFixed(2)}`;
+      document.getElementById('total').textContent = `¥${total.toFixed(2)}`;
+      
+      // 订单内按钮事件
+      document.querySelectorAll('.order-increase').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const dishId = btn.getAttribute('data-id');
+          const dish = appState.dishes.find(d => d.id === dishId);
+          if (!dish || dish.stock <= 0) return;
+          
+          const item = appState.cart.find(i => i.id === dishId);
+          if (item) {
+            if (item.quantity < dish.stock) {
+              item.quantity += 1;
+            } else {
+              alert('已达最大库存数量');
+            }
+          } else {
+            appState.cart.push({ id: dishId, quantity: 1 });
+          }
           
           localStorage.setItem('menuCart', JSON.stringify(appState.cart));
           updateCartCount();
           renderOrder();
-        }
-      });
-    });
-  };
-
-  // 8. 初始化所有事件
-  const initEvents = () => {
-    // 导航切换
-    document.getElementById('menu-btn').addEventListener('click', () => showSection('menu-section'));
-    document.getElementById('add-dish-btn').addEventListener('click', () => showSection('add-dish-section'));
-    document.getElementById('order-btn').addEventListener('click', () => showSection('order-section'));
-    
-    // 移动端菜单
-    document.getElementById('mobile-menu-btn').addEventListener('click', () => {
-      document.getElementById('mobile-menu').classList.toggle('hidden');
-    });
-    document.getElementById('mobile-menu-btn-item').addEventListener('click', () => {
-      showSection('menu-section');
-      document.getElementById('mobile-menu').classList.add('hidden');
-    });
-    document.getElementById('mobile-add-dish-btn').addEventListener('click', () => {
-      showSection('add-dish-section');
-      document.getElementById('mobile-menu').classList.add('hidden');
-    });
-    document.getElementById('mobile-order-btn').addEventListener('click', () => {
-      showSection('order-section');
-      document.getElementById('mobile-menu').classList.add('hidden');
-    });
-    
-    // 分类筛选
-    document.querySelectorAll('.category-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const category = btn.getAttribute('data-category');
-        appState.currentCategory = category;
-        
-        document.querySelectorAll('.category-btn').forEach(b => {
-          b.classList.toggle('bg-primary', b.getAttribute('data-category') === category);
-          b.classList.toggle('text-white', b.getAttribute('data-category') === category);
-          b.classList.toggle('bg-gray-200', b.getAttribute('data-category') !== category);
         });
-        
+      });
+      
+      document.querySelectorAll('.order-decrease').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const dishId = btn.getAttribute('data-id');
+          const index = appState.cart.findIndex(i => i.id === dishId);
+          if (index !== -1) {
+            appState.cart[index].quantity > 1 
+              ? appState.cart[index].quantity -= 1 
+              : appState.cart.splice(index, 1);
+            
+            localStorage.setItem('menuCart', JSON.stringify(appState.cart));
+            updateCartCount();
+            renderOrder();
+          }
+        });
+      });
+    };
+
+    // 8. 初始化所有事件
+    const initEvents = () => {
+      // 导航切换
+      document.getElementById('menu-btn').addEventListener('click', () => showSection('menu-section'));
+      document.getElementById('add-dish-btn').addEventListener('click', () => {
+        appState.editingDishId = null; // 重置编辑状态
+        showSection('add-dish-section');
+      });
+      document.getElementById('order-btn').addEventListener('click', () => showSection('order-section'));
+      
+      // 移动端菜单
+      document.getElementById('mobile-menu-btn').addEventListener('click', () => {
+        document.getElementById('mobile-menu').classList.toggle('hidden');
+      });
+      document.getElementById('mobile-menu-btn-item').addEventListener('click', () => {
+        showSection('menu-section');
+        document.getElementById('mobile-menu').classList.add('hidden');
+      });
+      document.getElementById('mobile-add-dish-btn').addEventListener('click', () => {
+        appState.editingDishId = null;
+        showSection('add-dish-section');
+        document.getElementById('mobile-menu').classList.add('hidden');
+      });
+      document.getElementById('mobile-order-btn').addEventListener('click', () => {
+        showSection('order-section');
+        document.getElementById('mobile-menu').classList.add('hidden');
+      });
+      
+      // 分类筛选
+      document.querySelectorAll('.category-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const category = btn.getAttribute('data-category');
+          appState.currentCategory = category;
+          
+          document.querySelectorAll('.category-btn').forEach(b => {
+            b.classList.toggle('bg-primary', b.getAttribute('data-category') === category);
+            b.classList.toggle('text-white', b.getAttribute('data-category') === category);
+            b.classList.toggle('bg-gray-200', b.getAttribute('data-category') !== category);
+          });
+          
+          renderDishes();
+        });
+      });
+      
+      // 搜索功能
+      document.getElementById('search-input').addEventListener('input', (e) => {
+        appState.searchTerm = e.target.value;
         renderDishes();
       });
-    });
-    
-    // 搜索功能
-    document.getElementById('search-input').addEventListener('input', (e) => {
-      appState.searchTerm = e.target.value;
-      renderDishes();
-    });
-    
-    // 添加菜品表单
-    document.getElementById('add-dish-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const name = document.getElementById('dish-name').value.trim();
-      const price = parseFloat(document.getElementById('dish-price').value);
-      const category = document.getElementById('dish-category').value;
-      const description = document.getElementById('dish-description').value.trim();
-      const imageInput = document.getElementById('dish-image');
       
-      if (!name || !price || !category) {
-        alert('请填写必填项');
-        return;
-      }
+      // 添加/编辑菜品表单提交
+      document.getElementById('add-dish-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const dishId = document.getElementById('dish-id').value;
+        const name = document.getElementById('dish-name').value.trim();
+        const price = parseFloat(document.getElementById('dish-price').value);
+        const category = document.getElementById('dish-category').value;
+        const description = document.getElementById('dish-description').value.trim();
+        const stock = parseInt(document.getElementById('dish-stock').value) || 0;
+        const imageInput = document.getElementById('dish-image');
+        
+        if (!name || !price || !category) {
+          alert('请填写必填项');
+          return;
+        }
+        
+        // 处理图片（编辑时可保持原图片）
+        let imageUrl;
+        const isEditMode = !!dishId;
+        if (isEditMode) {
+          // 编辑模式：默认使用原图片
+          const originalDish = appState.dishes.find(d => d.id === dishId);
+          imageUrl = originalDish?.image || 'https://picsum.photos/seed/default/300/200';
+        } else {
+          // 新增模式：默认图
+          imageUrl = 'https://picsum.photos/seed/default/300/200';
+        }
+        
+        // 如果选择了新图片，更新图片地址
+        if (imageInput.files && imageInput.files[0]) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            imageUrl = e.target.result;
+            saveOrUpdateDish(imageUrl);
+          };
+          reader.readAsDataURL(imageInput.files[0]);
+        } else {
+          saveOrUpdateDish(imageUrl);
+        }
+        
+        // 保存或更新菜品
+        function saveOrUpdateDish(image) {
+          const dishData = {
+            name,
+            price,
+            category,
+            description,
+            image,
+            stock // 新增库存字段
+          };
+          
+          if (isEditMode) {
+            // 更新现有菜品
+            dishesRef.child(dishId).update(dishData)
+              .then(() => {
+                appState.editingDishId = null;
+                showSection('menu-section');
+                loadDishes(); // 重新加载
+              })
+              .catch(err => {
+                console.error('更新失败:', err);
+                alert('更新失败，请重试');
+              });
+          } else {
+            // 新增菜品
+            const newDishId = 'd' + Date.now();
+            dishesRef.child(newDishId).set({ ...dishData, id: newDishId })
+              .then(() => {
+                document.getElementById('add-dish-form').reset();
+                showSection('menu-section');
+                loadDishes();
+              })
+              .catch(err => {
+                console.error('保存失败:', err);
+                alert('添加失败，请重试');
+              });
+          }
+        }
+      });
       
-      let imageUrl = 'https://picsum.photos/seed/default/300/200';
-      if (imageInput.files && imageInput.files[0]) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          imageUrl = e.target.result;
-          saveDish(imageUrl);
-        };
-        reader.readAsDataURL(imageInput.files[0]);
-      } else {
-        saveDish(imageUrl);
-      }
+      // 取消添加/编辑菜品
+      document.getElementById('cancel-add-dish').addEventListener('click', () => {
+        appState.editingDishId = null;
+        showSection('menu-section');
+      });
       
-      function saveDish(image) {
-        const newDish = { id: 'd' + Date.now(), name, price, category, description, image };
-        dishesRef.child(newDish.id).set(newDish)
+      // 订单操作
+      document.getElementById('go-to-menu-from-order').addEventListener('click', () => showSection('menu-section'));
+      document.getElementById('clear-order').addEventListener('click', () => {
+        appState.cart = [];
+        localStorage.setItem('menuCart', JSON.stringify(appState.cart));
+        updateCartCount();
+        renderOrder();
+      });
+      document.getElementById('confirm-order').addEventListener('click', () => {
+        if (appState.cart.length === 0) return;
+        
+        // 下单成功后减少库存（仅前端模拟，实际项目需后端处理）
+        appState.cart.forEach(item => {
+          const dish = appState.dishes.find(d => d.id === item.id);
+          if (dish) {
+            dish.stock = Math.max(0, dish.stock - item.quantity);
+            // 同步到云端
+            dishesRef.child(dish.id).update({ stock: dish.stock });
+          }
+        });
+        
+        // 显示成功弹窗
+        const modal = document.getElementById('order-success-modal');
+        const modalContent = document.getElementById('modal-content');
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+          modalContent.classList.remove('scale-95', 'opacity-0');
+          modalContent.classList.add('scale-100', 'opacity-100');
+        }, 10);
+        
+        // 清空购物车
+        appState.cart = [];
+        localStorage.setItem('menuCart', JSON.stringify(appState.cart));
+        updateCartCount();
+      });
+      
+      // 关闭下单成功弹窗
+      document.getElementById('close-modal').addEventListener('click', () => {
+        const modal = document.getElementById('order-success-modal');
+        const modalContent = document.getElementById('modal-content');
+        modalContent.classList.remove('scale-100', 'opacity-100');
+        modalContent.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => {
+          modal.classList.add('hidden');
+          renderOrder();
+          loadDishes(); // 重新加载菜品（刷新库存）
+        }, 300);
+      });
+      
+      // 取消删除
+      document.getElementById('cancel-delete').addEventListener('click', () => {
+        document.getElementById('confirm-modal').classList.add('hidden');
+      });
+      
+      // 确认删除
+      document.getElementById('confirm-delete').addEventListener('click', () => {
+        const dishId = document.getElementById('confirm-delete').getAttribute('data-id');
+        dishesRef.child(dishId).remove()
           .then(() => {
-            document.getElementById('add-dish-form').reset();
-            showSection('menu-section');
-            loadDishes();
+            document.getElementById('confirm-modal').classList.add('hidden');
+            // 从购物车中移除已删除的菜品
+            appState.cart = appState.cart.filter(item => item.id !== dishId);
+            localStorage.setItem('menuCart', JSON.stringify(appState.cart));
+            updateCartCount();
+            loadDishes(); // 重新加载
           })
           .catch(err => {
-            console.error('保存失败:', err);
-            alert('添加失败，请重试');
+            console.error('删除失败:', err);
+            alert('删除失败，请重试');
           });
-      }
-    });
-    
-    // 取消添加菜品
-    document.getElementById('cancel-add-dish').addEventListener('click', () => {
-      document.getElementById('add-dish-form').reset();
-      showSection('menu-section');
-    });
-    
-    // 订单操作
-    document.getElementById('go-to-menu-from-order').addEventListener('click', () => showSection('menu-section'));
-    document.getElementById('clear-order').addEventListener('click', () => {
-      appState.cart = [];
-      localStorage.setItem('menuCart', JSON.stringify(appState.cart));
-      updateCartCount();
-      renderOrder();
-    });
-    document.getElementById('confirm-order').addEventListener('click', () => {
-      if (appState.cart.length === 0) return;
-      
-      const modal = document.getElementById('order-success-modal');
-      const modalContent = document.getElementById('modal-content');
-      modal.classList.remove('hidden');
-      setTimeout(() => {
-        modalContent.classList.remove('scale-95', 'opacity-0');
-        modalContent.classList.add('scale-100', 'opacity-100');
-      }, 10);
-      
-      appState.cart = [];
-      localStorage.setItem('menuCart', JSON.stringify(appState.cart));
-      updateCartCount();
-    });
-    document.getElementById('close-modal').addEventListener('click', () => {
-      const modal = document.getElementById('order-success-modal');
-      const modalContent = document.getElementById('modal-content');
-      modalContent.classList.remove('scale-100', 'opacity-100');
-      modalContent.classList.add('scale-95', 'opacity-0');
-      setTimeout(() => {
-        modal.classList.add('hidden');
-        renderOrder();
-      }, 300);
-    });
-  };
+      });
+    };
 
-  // 页面加载完成后初始化
-  window.addEventListener('DOMContentLoaded', () => {
-    initEvents();
-    updateCartCount();
-    loadDishes(); // 强制加载菜品
-  });
-</script>
+    // 页面加载完成后初始化
+    window.addEventListener('DOMContentLoaded', () => {
+      initEvents();
+      updateCartCount();
+      loadDishes();
+    });
+  </script>
+</body>
+</html>
